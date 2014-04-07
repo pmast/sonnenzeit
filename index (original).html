@@ -1,0 +1,280 @@
+<html>
+	<head>
+		<style>
+			.chart rect {
+			  fill: steelblue;
+			}
+
+			.chart text {
+			  fill: white;
+			  font: 10px sans-serif;
+			  text-anchor: end;
+			}
+			div.tooltip {   
+				position: absolute;           
+				text-align: left;
+				width: 120px;                  
+				height: 42px;                 
+				padding: 2px;             
+				font: 12px sans-serif;        
+				background: lightsteelblue;   
+				border: 0px;      
+				border-radius: 8px;           
+				pointer-events: none;         
+			}
+			#mapcontainer{position:relative;
+      			width:300px;
+      			height:300px;
+    		}
+		</style>
+		<link href="style/bootstrap.min.css" rel="stylesheet">
+		<link href="style/bootstrap-theme.min.css" rel="stylesheet">
+		<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.1/leaflet.css" />
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+		<script src="suncalc.js"></script>
+		<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+		<script src="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.js"></script>
+		<script>
+			// var chart;
+			var tzOffset;
+
+			function toString(sec){
+				zeros = d3.format("02f");
+				hours = Math.floor(sec/3600);
+				minutes = Math.floor((sec-hours*3600)/60);
+				seconds = sec - hours*3600 - minutes*60;
+				return hours + ":" + zeros(minutes) + ":" + zeros(seconds);
+			}
+
+			function init(){
+				// today = new Date();
+				// yesterday = new Date();
+				// yesterday = yesterday.setDate(today.getDate()-1);
+				// tomorrow = new Date();
+				// tomorrow = tomorrow.setDate(today.getDate()+1);
+				// times_today = SunCalc.getTimes(today, lat, lon);
+				// times_yesterday = SunCalc.getTimes(yesterday, lat, lon);
+				// times_tomorrow = SunCalc.getTimes(tomorrow, lat, lon);
+
+				// duration = times_today.sunset - times_today.sunrise;
+				// duration_yesterday = times_yesterday.sunset - times_yesterday.sunrise;
+				// duration_tomorrow = times_tomorrow.sunset - times_tomorrow.sunrise;
+
+				// td_y = (duration - duration_yesterday)/1000.;
+				// td_w = (duration_tomorrow - duration)/1000.;
+				// // console.log(td_w);
+
+				// document.getElementById("today").innerText = toString(td_y) + ((td_y<0?" shorter":" longer"));
+				// document.getElementById("tomorrow").innerText = toString(td_w) + ((td_w<0?" shorter":" longer"));
+
+				var now = new Date();
+
+				tzOffset = now.getTimezoneOffset();
+
+				var chart = initGraph();
+				var map = initMap();
+				map.on("moveend",function(e){
+					// this.vb.setCenterFields();
+					var c = map.getCenter().wrap();
+					var ll = []
+					var now = new Date();
+					$.get('http://www.earthtools.org/timezone-1.1/'+c.lat+'/'+c.lng, function(data, textStatus){
+						var offset = $(data).find('offset').text();
+						offset = tzOffset + offset*60;
+						// console.log(getTimes(now, c, offset));
+						updateGraph(c, offset, chart);
+					});
+				});
+				var p = {lat: -22.908333, lng: -43.196389};
+				updateGraph(p, 1, chart);
+				return;
+			}
+
+			function initMap(){
+				var map = L.map('map').setView([43.5, 10], 5);
+				L.tileLayer('http://{s}.tile.cloudmade.com/8d1255ae36dc4decb3791bfa3f1d58cc/997/256/{z}/{x}/{y}.png', {
+					attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://cloudmade.com">CloudMade</a>',
+					maxZoom: 18
+				}).addTo(map);
+				return map;
+			}
+
+			function initGraph(){
+				var chart = d3.select("#chartcontainer").append("svg")
+    				.attr("class", "graph");
+    			return chart;
+			}
+
+			function startCalc(){
+				tmpDate = new Date();
+				for (i=0; i<365; i++){
+					tmpDate.setDate(tmpDate.getDate()+1);
+				}
+			}
+
+			function calc(date){
+
+				tomorrow = new Date(date.toISOString());
+				tomorrow.setDate(tomorrow.getDate()+1);
+				a = SunCalc.getTimes(date, lat, lon);
+				b = SunCalc.getTimes(tomorrow, lat, lon);
+				return ((b.sunset - b.sunrise) - (a.sunset - a.sunrise))/1000./60.;
+			}
+
+			function getTimes(d, p, offset){
+				var a = SunCalc.getTimes(d, p.lat, p.lng);
+				for (var property in a){
+					// console.log(property);
+					a[property] = new Date(a[property].getTime() + offset * 60 * 1000);
+				}
+				return a;
+			}
+
+			function getList(p, offset){
+
+				d = new Date();
+				d.setMonth(0);
+				d.setDate(1);
+				d.setHours(0, 0, 0, 0);
+				
+
+				od = 0;
+				var o;
+				l = [];
+				for (i=0; i<365; i++){
+					d.setDate(d.getDate()+1);
+					a = getTimes(d, p, offset);
+					sr = a.sunrise;
+					sr2 = sr.getSeconds() + sr.getMinutes() * 60 + sr.getHours() * 60 * 60;
+					ss = a.sunset;
+					ss2 = ss.getSeconds() + ss.getMinutes() * 60 + ss.getHours() * 60 * 60;
+
+					// // console.log('%s: %s - %s (%s)',d, sr, ss, (ss-sr));
+					o = {sunrise: sr,
+						sunrise_sec: sr2,
+						sunset: ss,
+						sunset_sec: ss2-sr2,
+						date: new Date(d),
+						length: 24*3600-ss2
+					};
+					l.push(o);
+				}
+				return l;
+			}
+
+			function isToday(d){
+				today = new Date();
+				if(today.getFullYear() == d.getFullYear() && today.getDate() == d.getDate() && today.getMonth() == d.getMonth())
+					return true;
+				return false;
+			}
+
+			function drawGraph(){
+    			
+
+				//Amrum
+				// d = getList([54.651667, 8.336389]);
+
+				//Hamburg
+				var p = {lat: 53.550556,lng:9.993333};
+				d = getList(p);
+
+				updateGraph(d, chart);
+				window.setTimeout(function(){
+					console.log('rio');
+					// rio
+					d = getList([-22.908333, -43.196389]);
+					updateGraph(d, chart);
+				}, 1500);
+			}
+
+			function updateGraph(p, offset, chart){
+				var day_length = 24*3600;
+
+				data = getList(p, offset);
+
+				tdata = ['sunrise_sec', 'sunset_sec', 'length'].map(function(key){
+					return data.map(function(object){
+						return {x: object.date, y:object[key]};
+					})
+				});
+				tdata = d3.layout.stack()(tdata);
+
+				// console.log(tdata[0][0]);
+
+				height = 200;
+				width = 300;
+
+
+				x = d3.scale.linear().range([0, width]).domain([0, tdata[0].length-1]);
+				y = d3.scale.linear().domain([0, day_length]).range([0, height]);
+				colors = d3.scale.category10();
+
+
+				var div = d3.select("body").append("div")   
+    				.attr("class", "tooltip")               
+    				.style("opacity", 0);
+
+    			var timeFormat = d3.time.format("%H:%M:%S");
+    			var dateFormat = d3.time.format("%Y-%m-%d");
+
+    			// var chart = d3.select("body").selectAll("svg")
+    			// 	.append("svg")
+    			// 	.attr("class", "graph");
+
+    			// add new group
+				var section = chart.selectAll("g")
+					.data(tdata);
+				section.enter().append("g")
+					.attr("transform", function(d){
+						return "translate(0," + height + ")"});
+
+				// add bars in group
+				var bar = section.style("color", function(){
+						return "white"}).selectAll("rect")
+					.data(function(d){return d});
+
+				bar.enter().append("rect")
+					.attr("width", x(1))
+					.attr("height", 0)
+					.attr("fill", function(d, i, j){
+						return colors(j)
+					})
+					.attr("y", height)
+					.attr("x", function(d, i) {
+						return x(i);
+					});
+					
+				bar.transition()
+					.attr("height", function(d){
+						return y(d.y)
+					})
+					.attr("y", function(d){
+						return -y(d.y0)-y(d.y);
+					})
+					.duration(1000);
+			}
+		</script>
+	</head>
+	<body onLOad="javascript:init();" style="font-size: 20pt; font-family: Arial;">
+		<!-- Today, daytime is <span id="today" style="color:red;">0</span> than yesterday.<br>
+		<br>
+		Tomorrow, daytime is <span id="tomorrow" style="color:red;">0</span> than today.<br>-->
+		<br>
+		<br>
+		<div class="container">
+			<div class="row">
+				<div id="chartcontainer" class="col-md-6">
+				</div>
+				<div id="mapcontainer" class="col-md-6">
+					<div style="position:absolute; width:100%; height:100%; z-index: 1;" id="map"></div>
+						<div style="position:absolute; width:100%; height:100%; z-index: 99; pointer-events:none;">
+						<svg style="width:100%; height:100%; background:transparent;">
+						    <circle cx="50%" cy="50%" r="10" stroke="black" stroke-width="2" fill="transparent" />
+						</svg>
+					</div>
+		        </div>
+		    </div>
+		</div>
+	</body>
+</html>
