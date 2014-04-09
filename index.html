@@ -13,18 +13,23 @@
 			div.tooltip {   
 				position: absolute;           
 				text-align: left;
-				width: 120px;                  
-				height: 42px;                 
+				width: 200px;                  
+				height: 64px;                 
 				padding: 2px;             
 				font: 12px sans-serif;        
-				background: lightsteelblue;   
-				border: 0px;      
-				border-radius: 8px;           
+				background: #3b3b3b;   
+				color: lightgray;
+				border: 0px;
+				border-radius:2px;
 				pointer-events: none;         
 			}
 			#mapcontainer{position:relative;
       			width:100%;
       			height:250px;
+    		}
+
+    		div.nopad{
+    			padding: 0px;
     		}
 		</style>
 		
@@ -42,6 +47,10 @@
 		<script>
 			// var chart;
 			var tzOffset;
+			var timeFormat = d3.time.format("%H:%M:%S");
+			var dateFormat = d3.time.format("%Y-%m-%d");
+			var now = new Date();
+
 
 			function toString(sec){
 				zeros = d3.format("02f");
@@ -83,16 +92,6 @@
 
 			function init(){
 
-
-				var chart = initGraph();
-				var map = initMap();
-
-				map.on("moveend",function(e){
-					var c = map.getCenter().wrap();
-					var ll = []
-					var now = new Date();
-					updateGraph(c, 1, chart);
-				});
 				var p = {lng:8.336389, lat:54.651667};
 				var d = new Date();
 
@@ -101,7 +100,7 @@
 				var p = {lng:8.336389, lat:54.651667};
 
 				// rio
-				p = {lat: -22.908333,lng: -43.196389};
+				// p = {lat: -22.908333,lng: -43.196389};
 
 				// pitcairn
 				// p = {lat: -24.362180,lng: -128.377562};
@@ -113,14 +112,24 @@
 				// p = {lat: 68.550344,lng: -66.576181};
 
 				// var p = {lat: -22.908333, lng: -43.196389};
+
+				var chart = initGraph();
 				updateGraph(p, 1, chart);
+
+				var map = initMap(p);
+				map.on("moveend",function(e){
+					var c = map.getCenter().wrap();
+					var ll = []
+					var now = new Date();
+					updateGraph(c, 1, chart);
+				});
 				return;
 			}
 
-			function initMap(){
+			function initMap(p){
 				var map = L.map('map', {
 					// maxBounds: L.latLngBounds([-90, -180], [90, 180])
-				}).setView([43.5, 10], 2);
+				}).setView([p.lat, p.lng], 2);
 				L.tileLayer('http://maps.vesseltracker.com/vesseltracker/{z}/{x}/{y}.png', {
 					attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://cloudmade.com">CloudMade</a>',
 					maxZoom: 18,
@@ -130,6 +139,11 @@
 			}
 
 			function initGraph(){
+				d3.select("body").append("div")   
+    				.attr("class", "tooltip")               
+    				.attr("id", "tooltip")
+    				.style("opacity", 0);
+
 				var chart = d3.select("#chartcontainer").append("svg")
     				.attr("class", "graph");
     			return chart;
@@ -147,14 +161,16 @@
 
 				d = new Date();
 				d.setMonth(0);
-				d.setDate(1);
+				d.setDate(0);
 				d.setHours(12, 0, 0, 0);
 				
 
 				od = 0;
+				
+				var l = [];
 				var o;
-				l = [];
 				var oldrise = null;
+				var prevDuration = null;
 				for (i=0; i<365; i++){
 					d.setDate(d.getDate()+1);
 					a = getTimes(d, p, offset);
@@ -175,49 +191,80 @@
 
 					oldrise = sr.getTime();
 
+					if (o != null){
+						o.nextDuration = duration;
+						l.push(o);
+					}
+
 					o = {sunrise: sr,
 						sunset: ss,
 						noon: noon,
 						date: new Date(d),
 						duration: duration,
+						prevDuration: prevDuration,
 						delta: delta,
 					};
-					l.push(o);
+					prevDuration = duration;
 				}
 				return l;
 			}
 
-			function updateGraph(p, offset, chart){
-				var day_length = 24*3600;
+			function getColor(d, i){
+				if (dateFormat(d.date) == dateFormat(now))
+					return "red";
+				return "gold"
+			}
 
+
+			function getDurationString(ms){
+				var tmp = ms/1000/60/60;
+
+				var h = Math.floor(Math.abs(tmp));
+				var min = Math.floor((Math.abs(tmp) - h)*60);
+				var sec = Math.floor((Math.abs(tmp) - h - min/60)*3600);
+
+				return ((tmp < 0) ? "-" : "") + d3.format("02d")(h) + ":" + d3.format("02d")(min) + ":" + d3.format("02d")(sec);
+			}
+
+			function getDurationString2(ms){
+				var tmp = ms/1000/60/60;
+
+				var h = Math.floor(Math.abs(tmp));
+				var min = Math.floor((Math.abs(tmp) - h)*60);
+				var sec = Math.floor((Math.abs(tmp) - h - min/60)*3600);
+
+				return ((h>0) ? d3.format("d")(h) + " hours" : "") + 
+					((min>0) ? " " + d3.format("d")(min) + " minutes" : "") +
+					((sec>0) ? " " + d3.format("d")(sec) + " seconds" : "") + ((tmp > 0) ? " shorter" : " longer");
+
+				// return ((tmp < 0) ? "-" : "") +  + ":" + d3.format("02d")(min) + ":" + d3.format("02d")(sec);
+			}
+
+			function updateGraph(p, offset, chart){
 				data = getList(p, offset);
-				// console.log(p.lat);
 
 				var max = d3.max(data, function(d) {
 					return d.delta + d.duration;
 				});
 				var min = d3.min(data, function(d) {
-					// console.log("%s, %s, %s, %s", d.delta, d.duration, d.sunrise.getTime(), d.sunset.getTime());
 					return d.delta;
 				});
 
-				height = 150;
-				width = 365*2;
+				width = chart.style("width");
+				width = width.substring(0, width.length-2)
+				
+
+				height = chart.style("height");
+				height = height.substring(0, height.length-2)
+
+
+				bar_width = width/365.0;
 
 				t = 24*1000*3600 - (max - min);
 
-				// max = min + 24*3600;
-				// x = d3.scale.linear().range([0, width]).domain([0, tdata[0].length-1]);
 				y = d3.scale.linear().domain([min-t/2, max+t/2]).range([0, height]);
-				// colors = d3.scale.category10();
+				x = d3.scale.linear().domain([0, data.length]).range([0, width]);
 
-
-				var div = d3.select("body").append("div")   
-    				.attr("class", "tooltip")               
-    				.style("opacity", 0);
-
-    			var timeFormat = d3.time.format("%H:%M:%S");
-    			var dateFormat = d3.time.format("%Y-%m-%d");
 
 				var bar = chart.selectAll("rect")
 					.data(data);
@@ -229,15 +276,17 @@
 						return y(d.delta);
 					})
 					.attr("x", function(d, i) {
-						return i*2;
+						return x(i) - .5;
 					})
-					.attr("width", 2)
+					.attr("width", bar_width + .5)
 					.attr("height", function(d, i){
 						if (isNaN(d.sunset.getTime()))
 							return height;
 						return y(d.delta + d.duration) - y(d.delta);
 					})
-					.attr("fill", 'gold');
+					.attr("fill", function(d, i){
+						return getColor(d, i);
+					});
 
 				bar.transition()
 					.attr("height", function(d){
@@ -253,9 +302,32 @@
 						// return y(max_d/4 + d.sunrise_sec2);
 					})
 					.attr("x", function(d, i) {
-						return i*2;
+						return x(i) - .5;
 					})
 					.duration(1000);
+				bar.on("mouseover", function(d,i){
+					d3.select(this).attr("fill", '#2b2b2b');
+					// d3.select('#tooltip')
+					// 	.html(dateFormat(d.date) + "<br>"
+					// 		+ "Length of the day: " + getDurationString(d.duration) + "<br>"
+					// 		+ "<: " +getDurationString(d.delta)+ "<br>"
+					// 		+ ">: " +3+ "<br>"
+					// 		)
+					// 	.style("left", (d3.event.pageX + 5) + "px")     
+     //            		.style("top", (d3.event.pageY - 28) + "px")
+     //            		.style("opacity", 0.9);
+                	d3.select("#texts")
+                		.html("<b>" + dateFormat(d.date) + "</b><br>"
+							+ "Length of the day: " + getDurationString(d.duration) + "<br>"
+							+ "The previous day was " + getDurationString2(d.duration - d.prevDuration) + " than this day<br>"
+							+ "The next day is " + getDurationString2(d.duration - d.nextDuration) + " than this day<br>"
+							);
+				});
+				bar.on("mouseout", function(d,i){
+					d3.select(this).attr("fill", getColor(d,i));
+					// d3.select('#tooltip')
+					// 	.style("opacity", 0);
+				});
 
 			}
 		</script>
@@ -267,17 +339,20 @@
 		<br>
 		<br>
 		<div class="container">
-			<div class="row">
-								<div id="mapcontainer" class="col-md-12">
-					<div style="position:absolute; width:100%; height:100%; z-index: 1; background:transparent;" id="map"></div>
-						<div style="position:absolute; width:100%; height:100%; z-index: 99; pointer-events:none;">
-						<svg style="width:100%; height:100%; background:transparent;">
+			<div class="row" style ="background:transparent; height:200px;">
+		        <div id="chartcontainer" class="col-md-12 nopad" style="background: transparent; height:100%">
+				</div>
+				<div id="texts" class="col-md-12 nopad" style="background: transparent; height:100; font-size:14px; color: lightgray;">
+				</div>
+				<div id="mapcontainer" class="col-md-12 nopad"  style="background: green;">
+					<div style="position:absolute; width:100%; height:100%; z-index: 1; background:transparent;" id="map">
+					</div>
+					<div style="position:absolute; width:100%; height:100%; z-index: 99; pointer-events:none;">
+						<svg style="width:100%; background:transparent;">
 						    <circle cx="50%" cy="50%" r="10" stroke="black" stroke-width="2" fill="transparent" />
 						</svg>
 					</div>
 		        </div>
-				<div id="chartcontainer" class="col-md-12" style="background: transparent;">
-				</div>
 		    </div>
 		</div>
 	</body>
