@@ -31,6 +31,13 @@
     		div.nopad{
     			padding: 0px;
     		}
+
+    		div.label{
+    			color:lightgray;
+    			font-weight:normal;
+    			padding:0px;
+    			font-size:10px;
+    		}
 		</style>
 		
 		<link href="style/bootstrap.min.css" rel="stylesheet">
@@ -67,29 +74,6 @@
 				return false;
 			}
 
-			function drawGraph(){
-    			
-
-				//Amrum
-				// d = getList([54.651667, 8.336389]);
-
-				//Hamburg
-				var p = {lat: 53.550556,lng:9.993333};
-
-				// rio
-				p = {lat: -22.908333,lng: -43.196389}; // getList([-22.908333, -43.196389]);
-				d = getList(p);
-
-
-				updateGraph(d, chart);
-				window.setTimeout(function(){
-					console.log('rio');
-					// rio
-					// d = getList([-22.908333, -43.196389]);
-					updateGraph(d, chart);
-				}, 1500);
-			}
-
 			function init(){
 
 				var p = {lng:8.336389, lat:54.651667};
@@ -114,14 +98,12 @@
 				// var p = {lat: -22.908333, lng: -43.196389};
 
 				var chart = initGraph();
-				updateGraph(p, 1, chart);
+				updateGraph(p, chart);
 
 				var map = initMap(p);
 				map.on("moveend",function(e){
 					var c = map.getCenter().wrap();
-					var ll = []
-					var now = new Date();
-					updateGraph(c, 1, chart);
+					updateGraph(c, chart);
 				});
 				return;
 			}
@@ -146,72 +128,75 @@
 
 				var chart = d3.select("#chartcontainer").append("svg")
     				.attr("class", "graph");
+
+    			// chart = 
     			return chart;
 			}
 
-			function getTimes(d, p, offset){
-				var a = SunCalc.getTimes(d, p.lat, p.lng);
-				for (var property in a){
-					a[property] = new Date(a[property].getTime() + offset * 60 * 1000);
-				}
-				return a;
-			}
+			function getList(p){
 
-			function getList(p, offset){
-
-				d = new Date();
+				var d = new Date();
 				d.setMonth(0);
 				d.setDate(0);
 				d.setHours(12, 0, 0, 0);
 				
-
-				od = 0;
-				
-				var l = [];
+				var year = d.getFullYear()+1;
+				var data = [];
 				var o;
-				var oldrise = null;
-				var prevDuration = null;
-				for (i=0; i<365; i++){
-					d.setDate(d.getDate()+1);
-					a = getTimes(d, p, offset);
+				var today = null;
+				var old_a = SunCalc.getTimes(d, p.lat, p.lng);
+				var delta = 0;
+				var prevDuration = old_a.sunset.getTime() - old_a.sunrise.getTime();
+
+				d.setDate(d.getDate()+1);
+
+				while (d.getFullYear() == year){
+
+					a = SunCalc.getTimes(d, p.lat, p.lng);
 					sr = a.sunrise;
 					ss = a.sunset;
-					noon = a.solarNoon;
 					duration = ss.getTime() - sr.getTime();
 
-					if (oldrise == null){
-						delta = 0;
+					if (!isNaN(sr.getTime()) && !isNaN(old_a.sunrise)){
+						delta = delta + ((sr.getTime() - old_a.sunrise.getTime())-24*3600*1000);
 					} else {
-						if (!isNaN(sr.getTime()) && !isNaN(oldrise)){
-							delta = delta + ((sr.getTime() - oldrise)-24*3600*1000);
-						} else {
-							console.log(NaN);
-						}
+						console.log(NaN);
 					}
 
-					oldrise = sr.getTime();
+					old_a = a;
 
 					if (o != null){
 						o.nextDuration = duration;
-						l.push(o);
+						if (isToday(o.date))
+							today = o;
+						data.push(o);
 					}
 
 					o = {sunrise: sr,
 						sunset: ss,
-						noon: noon,
 						date: new Date(d),
 						duration: duration,
 						prevDuration: prevDuration,
 						delta: delta,
 					};
 					prevDuration = duration;
+					d.setDate(d.getDate()+1);
 				}
-				return l;
+				a = SunCalc.getTimes(d, p.lat, p.lng);
+				o.nextDuration = a.sunset.getTime() - a.sunrise.getTime();
+				data.push(o);
+				return {
+					today: today,
+					data: data
+				};
 			}
 
-			function getColor(d, i){
+			function getColor(d, i, highlight){
+				highlight = highlight == null ? false : highlight;
 				if (dateFormat(d.date) == dateFormat(now))
 					return "red";
+				if (highlight)
+					return "orange";
 				return "gold"
 			}
 
@@ -236,12 +221,30 @@
 				return ((h>0) ? d3.format("d")(h) + " hours" : "") + 
 					((min>0) ? " " + d3.format("d")(min) + " minutes" : "") +
 					((sec>0) ? " " + d3.format("d")(sec) + " seconds" : "") + ((tmp > 0) ? " shorter" : " longer");
-
-				// return ((tmp < 0) ? "-" : "") +  + ":" + d3.format("02d")(min) + ":" + d3.format("02d")(sec);
 			}
 
-			function updateGraph(p, offset, chart){
-				data = getList(p, offset);
+			function updateText(d){
+            	d3.select("#texts")
+            		.html("<b>" + dateFormat(d.date) + "</b><br>"
+						+ "Length of the day: " + getDurationString(d.duration) + "<br>"
+						+ "The previous day was " + getDurationString2(d.duration - d.prevDuration) + " than this day.<br>"
+						+ "The next day is " + getDurationString2(d.duration - d.nextDuration) + " than this day.<br>"
+						);
+
+			}
+
+			var highlight;
+
+			function updateGraph(p, chart){
+				var data = getList(p);
+				var today = data.today; 
+				data = data.data;
+
+				if (highlight)
+					updateText(data[highlight.i]);
+				else
+					updateText(today);
+
 
 				var max = d3.max(data, function(d) {
 					return d.delta + d.duration;
@@ -251,14 +254,13 @@
 				});
 
 				width = chart.style("width");
-				width = width.substring(0, width.length-2)
+				width = width.substring(0, width.length-2);
 				
-
 				height = chart.style("height");
-				height = height.substring(0, height.length-2)
+				height = height.substring(0, height.length-2);
 
 
-				bar_width = width/365.0;
+				bar_width = width/data.length;
 
 				t = 24*1000*3600 - (max - min);
 
@@ -266,8 +268,14 @@
 				x = d3.scale.linear().domain([0, data.length]).range([0, width]);
 
 
+				// if (highlight!=null){
+				// 	d3.select(highlight.element).attr("fill", getColor(highlight.d, highlight.i));
+				// }
+
 				var bar = chart.selectAll("rect")
 					.data(data);
+
+				var old_index;
 
 				bar.enter().append("rect")
 					.attr("y", function(d){
@@ -306,7 +314,7 @@
 					})
 					.duration(1000);
 				bar.on("mouseover", function(d,i){
-					d3.select(this).attr("fill", '#2b2b2b');
+					d3.select(this).attr("fill", '#	2b2b2b');
 					// d3.select('#tooltip')
 					// 	.html(dateFormat(d.date) + "<br>"
 					// 		+ "Length of the day: " + getDurationString(d.duration) + "<br>"
@@ -316,15 +324,22 @@
 					// 	.style("left", (d3.event.pageX + 5) + "px")     
      //            		.style("top", (d3.event.pageY - 28) + "px")
      //            		.style("opacity", 0.9);
-                	d3.select("#texts")
-                		.html("<b>" + dateFormat(d.date) + "</b><br>"
-							+ "Length of the day: " + getDurationString(d.duration) + "<br>"
-							+ "The previous day was " + getDurationString2(d.duration - d.prevDuration) + " than this day<br>"
-							+ "The next day is " + getDurationString2(d.duration - d.nextDuration) + " than this day<br>"
-							);
+     				if (highlight != null){
+     					d3.select(highlight.element).attr("fill", getColor(highlight.d, highlight.i));
+     				}
+					
+     				highlight = {
+     					element: this,
+     					d:d,
+     					i:i
+     				};
+     				old_index = i;
+
+     				updateText(d);
 				});
 				bar.on("mouseout", function(d,i){
-					d3.select(this).attr("fill", getColor(d,i));
+					// console.log(i);
+					d3.select(this).attr("fill", getColor(d, i, true));
 					// d3.select('#tooltip')
 					// 	.style("opacity", 0);
 				});
@@ -333,18 +348,17 @@
 		</script>
 	</head>
 	<body onLOad="javascript:init();" style="font-size: 20pt; font-family: Arial; background: #2b2b2b;">
-		<!-- Today, daytime is <span id="today" style="color:red;">0</span> than yesterday.<br>
-		<br>
-		Tomorrow, daytime is <span id="tomorrow" style="color:red;">0</span> than today.<br>-->
-		<br>
-		<br>
 		<div class="container">
 			<div class="row" style ="background:transparent; height:200px;">
-		        <div id="chartcontainer" class="col-md-12 nopad" style="background: transparent; height:100%">
+				<div class="col-md-12 nopad" style="margin-bottom:20px;">
+			        <div id="chartcontainer" style="background: transparent; height:100%">
+					</div>
+					<div class="label" style="position:absolute; left:0px; bottom:0px;">|&larr;January</div>
+					<div class="label" style="position:absolute; right:0px; bottom:0px;">December&rarr;|</div>
 				</div>
 				<div id="texts" class="col-md-12 nopad" style="background: transparent; height:100; font-size:14px; color: lightgray;">
 				</div>
-				<div id="mapcontainer" class="col-md-12 nopad"  style="background: green;">
+				<div id="mapcontainer" class="col-md-12 nopad"  style="background: transparent;">
 					<div style="position:absolute; width:100%; height:100%; z-index: 1; background:transparent;" id="map">
 					</div>
 					<div style="position:absolute; width:100%; height:100%; z-index: 99; pointer-events:none;">
