@@ -224,11 +224,20 @@
 			}
 
 			function updateText(d){
+				var previous = "The previous day";
+				var next = "The next day";
+				var day = "this day";
+				if (isToday(d.date)){
+					day = "today";
+					next = "Tomorrow";
+					previous = "Yesterday";
+				}
+
             	d3.select("#texts")
             		.html("<b>" + dateFormat(d.date) + "</b><br>"
-						+ "Length of the day: " + getDurationString(d.duration) + "<br>"
-						+ "The previous day was " + getDurationString2(d.duration - d.prevDuration) + " than this day.<br>"
-						+ "The next day is " + getDurationString2(d.duration - d.nextDuration) + " than this day.<br>"
+						+ "Length of " + day + ": " + getDurationString(d.duration) + "<br>"
+						+ previous + " was " + getDurationString2(d.duration - d.prevDuration) + " than " + day + ".<br>"
+						+ next + " is " + getDurationString2(d.duration - d.nextDuration) + " than " + day + ".<br>"
 						);
 
 			}
@@ -314,7 +323,7 @@
 					})
 					.duration(1000);
 				bar.on("mouseover", function(d,i){
-					d3.select(this).attr("fill", '#	2b2b2b');
+					d3.select(this).attr("fill", '#2b2b2b');
 					// d3.select('#tooltip')
 					// 	.html(dateFormat(d.date) + "<br>"
 					// 		+ "Length of the day: " + getDurationString(d.duration) + "<br>"
