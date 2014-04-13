@@ -1,28 +1,10 @@
 <html>
 	<head>
 		<style>
-			.chart rect {
-			  fill: steelblue;
-			}
+    		body, div {
+    			font-family: "arial", "sans-serif";
+    		}
 
-			.chart text {
-			  fill: white;
-			  font: 10px sans-serif;
-			  text-anchor: end;
-			}
-			div.tooltip {   
-				position: absolute;           
-				text-align: left;
-				width: 200px;                  
-				height: 64px;                 
-				padding: 2px;             
-				font: 12px sans-serif;        
-				background: #3b3b3b;   
-				color: lightgray;
-				border: 0px;
-				border-radius:2px;
-				pointer-events: none;         
-			}
 			#mapcontainer{position:relative;
       			width:100%;
       			height:250px;
@@ -38,13 +20,14 @@
     			padding:0px;
     			font-size:10px;
     		}
+
 		</style>
 		
 		<link href="style/bootstrap.min.css" rel="stylesheet">
 		<link href="style/bootstrap-theme.min.css" rel="stylesheet">
 		<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.css" />
 
-		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+		<!--<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>-->
 		<script src="js/suncalc.js"></script>
 		<!--<script src="js/d3.v3.min.js"></script>-->
 		<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
@@ -127,7 +110,9 @@
     				.style("opacity", 0);
 
 				var chart = d3.select("#chartcontainer").append("svg")
-    				.attr("class", "graph");
+    				.attr("class", "graph")
+    				.attr("width", '100%')
+    				.attr("height", '100%');
 
     			// chart = 
     			return chart;
@@ -262,11 +247,8 @@
 					return d.delta;
 				});
 
-				width = chart.style("width");
-				width = width.substring(0, width.length-2);
-				
-				height = chart.style("height");
-				height = height.substring(0, height.length-2);
+				width = chart.node().parentNode.scrollWidth;				
+				height = chart.node().parentNode.scrollHeight;
 
 
 				bar_width = width/data.length;
@@ -275,11 +257,6 @@
 
 				y = d3.scale.linear().domain([min-t/2, max+t/2]).range([0, height]);
 				x = d3.scale.linear().domain([0, data.length]).range([0, width]);
-
-
-				// if (highlight!=null){
-				// 	d3.select(highlight.element).attr("fill", getColor(highlight.d, highlight.i));
-				// }
 
 				var bar = chart.selectAll("rect")
 					.data(data);
@@ -316,7 +293,6 @@
 						if (isNaN(d.sunrise.getTime()))
 							return 0;
 						return y(d.delta);
-						// return y(max_d/4 + d.sunrise_sec2);
 					})
 					.attr("x", function(d, i) {
 						return x(i) - .5;
@@ -324,15 +300,7 @@
 					.duration(1000);
 				bar.on("mouseover", function(d,i){
 					d3.select(this).attr("fill", '#2b2b2b');
-					// d3.select('#tooltip')
-					// 	.html(dateFormat(d.date) + "<br>"
-					// 		+ "Length of the day: " + getDurationString(d.duration) + "<br>"
-					// 		+ "<: " +getDurationString(d.delta)+ "<br>"
-					// 		+ ">: " +3+ "<br>"
-					// 		)
-					// 	.style("left", (d3.event.pageX + 5) + "px")     
-     //            		.style("top", (d3.event.pageY - 28) + "px")
-     //            		.style("opacity", 0.9);
+
      				if (highlight != null){
      					d3.select(highlight.element).attr("fill", getColor(highlight.d, highlight.i));
      				}
@@ -347,19 +315,19 @@
      				updateText(d);
 				});
 				bar.on("mouseout", function(d,i){
-					// console.log(i);
 					d3.select(this).attr("fill", getColor(d, i, true));
-					// d3.select('#tooltip')
-					// 	.style("opacity", 0);
 				});
 
 			}
 		</script>
 	</head>
-	<body onLOad="javascript:init();" style="font-size: 20pt; font-family: Arial; background: #2b2b2b;">
+	<body onLOad="javascript:init();" style="font-size: 20pt; font-family: Arial, 'sans-serif'; background: #2b2b2b;">
 		<div class="container">
-			<div class="row" style ="background:transparent; height:200px;">
-				<div class="col-md-12 nopad" style="margin-bottom:20px;">
+			<div class="row" style ="background:transparent;">
+				<div class="col-md-12 nopad" style="margin-bottom:20px; color:lightgray;">
+					How the days get longer, and shorter...
+				</div>
+				<div class="col-md-12 nopad" style="margin-bottom:20px; height:200px;">
 			        <div id="chartcontainer" style="background: transparent; height:100%">
 					</div>
 					<div class="label" style="position:absolute; left:0px; bottom:0px;">|&larr;January</div>
