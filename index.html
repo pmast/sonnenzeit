@@ -24,7 +24,7 @@
 		</style>
 		
 		<link href="style/bootstrap.min.css" rel="stylesheet">
-		<link href="style/bootstrap-theme.min.css" rel="stylesheet">
+		<!--<link href="style/bootstrap-theme.min.css" rel="stylesheet">-->
 		<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.css" />
 
 		<!--<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>-->
@@ -40,15 +40,6 @@
 			var timeFormat = d3.time.format("%H:%M:%S");
 			var dateFormat = d3.time.format("%Y-%m-%d");
 			var now = new Date();
-
-
-			function toString(sec){
-				zeros = d3.format("02f");
-				hours = Math.floor(sec/3600);
-				minutes = Math.floor((sec-hours*3600)/60);
-				seconds = sec - hours*3600 - minutes*60;
-				return hours + ":" + zeros(minutes) + ":" + zeros(seconds);
-			}
 
 			function isToday(d){
 				today = new Date();
@@ -140,12 +131,21 @@
 					a = SunCalc.getTimes(d, p.lat, p.lng);
 					sr = a.sunrise;
 					ss = a.sunset;
+					altitude = SunCalc.getPosition(a.solarNoon, p.lat, p.lng).altitude;
 					duration = ss.getTime() - sr.getTime();
 
 					if (!isNaN(sr.getTime()) && !isNaN(old_a.sunrise)){
 						delta = delta + ((sr.getTime() - old_a.sunrise.getTime())-24*3600*1000);
 					} else {
-						console.log(NaN);
+						// console.log(NaN);
+					}
+
+					if (isNaN(sr.getTime()) && altitude > 0){
+						duration = 24*3600*1000;
+					}
+
+					if (isNaN(sr.getTime()) && altitude < 0){
+						duration = 0;
 					}
 
 					old_a = a;
@@ -163,6 +163,7 @@
 						duration: duration,
 						prevDuration: prevDuration,
 						delta: delta,
+						altitude: altitude
 					};
 					prevDuration = duration;
 					d.setDate(d.getDate()+1);
@@ -197,12 +198,13 @@
 			}
 
 			function getDurationString2(ms){
+				if (ms==0)
+					return "the same length";
 				var tmp = ms/1000/60/60;
 
 				var h = Math.floor(Math.abs(tmp));
 				var min = Math.floor((Math.abs(tmp) - h)*60);
 				var sec = Math.floor((Math.abs(tmp) - h - min/60)*3600);
-
 				return ((h>0) ? d3.format("d")(h) + " hours" : "") + 
 					((min>0) ? " " + d3.format("d")(min) + " minutes" : "") +
 					((sec>0) ? " " + d3.format("d")(sec) + " seconds" : "") + ((tmp > 0) ? " shorter" : " longer");
@@ -212,17 +214,25 @@
 				var previous = "The previous day";
 				var next = "The next day";
 				var day = "this day";
+				var verb1 = " was ";
+				var verb2 = " is ";
 				if (isToday(d.date)){
 					day = "today";
 					next = "Tomorrow";
 					previous = "Yesterday";
 				}
+				if (d.duration - d.prevDuration == 0){
+					verb1 = " had ";
+				}
+				if (d.duration - d.nextDuration == 0){
+					verb2 = " has ";
+				}
 
             	d3.select("#texts")
             		.html("<b>" + dateFormat(d.date) + "</b><br>"
 						+ "Length of " + day + ": " + getDurationString(d.duration) + "<br>"
-						+ previous + " was " + getDurationString2(d.duration - d.prevDuration) + " than " + day + ".<br>"
-						+ next + " is " + getDurationString2(d.duration - d.nextDuration) + " than " + day + ".<br>"
+						+ previous + verb1 + getDurationString2(d.duration - d.prevDuration) + " than " + day + ".<br>"
+						+ next + verb2 + getDurationString2(d.duration - d.nextDuration) + " than " + day + ".<br>"
 						);
 
 			}
@@ -247,8 +257,8 @@
 					return d.delta;
 				});
 
-				width = chart.node().parentNode.scrollWidth;				
-				height = chart.node().parentNode.scrollHeight;
+				width = chart.node().parentNode.scrollWidth;
+				height = chart.node().parentNode.scrollHeight - 20;
 
 
 				bar_width = width/data.length;
@@ -265,8 +275,10 @@
 
 				bar.enter().append("rect")
 					.attr("y", function(d){
-						if (isNaN(d.sunrise.getTime()))
+						if (isNaN(d.sunrise.getTime()) && d.altitude > 0)
 							return 0;
+						if (isNaN(d.sunrise.getTime()) && d.altitude < 0)
+							return height/2;
 						return y(d.delta);
 					})
 					.attr("x", function(d, i) {
@@ -274,7 +286,10 @@
 					})
 					.attr("width", bar_width + .5)
 					.attr("height", function(d, i){
-						if (isNaN(d.sunset.getTime()))
+						if (isNaN(d.sunset.getTime()) && d.altitude < 0){
+							return 0;
+						}
+						if (isNaN(d.sunset.getTime()) && d.altitude > 0)
 							return height;
 						return y(d.delta + d.duration) - y(d.delta);
 					})
@@ -284,13 +299,19 @@
 
 				bar.transition()
 					.attr("height", function(d){
-						if (isNaN(d.sunset.getTime())){
+
+						if (isNaN(d.sunset.getTime()) && d.altitude < 0){
+							return 0;
+						}
+						if (isNaN(d.sunset.getTime()) && d.altitude > 0){
 							return height;
 						}
 						return y(d.delta + d.duration) - y(d.delta);
 					})
 					.attr("y", function(d){
-						if (isNaN(d.sunrise.getTime()))
+						if (isNaN(d.sunrise.getTime()) && d.altitude < 0)
+							return height/2;
+						if (isNaN(d.sunrise.getTime()) && d.altitude > 0)
 							return 0;
 						return y(d.delta);
 					})
@@ -327,7 +348,7 @@
 				<div class="col-md-12 nopad" style="margin-bottom:20px; color:lightgray;">
 					How the days get longer, and shorter...
 				</div>
-				<div class="col-md-12 nopad" style="margin-bottom:20px; height:200px;">
+				<div class="col-md-12 nopad" style="margin-bottom:20px; height:220px;">
 			        <div id="chartcontainer" style="background: transparent; height:100%">
 					</div>
 					<div class="label" style="position:absolute; left:0px; bottom:0px;">|&larr;January</div>
