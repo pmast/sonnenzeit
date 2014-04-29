@@ -228,7 +228,7 @@
 				if (d.duration - d.nextDuration == 0){
 					verb2 = " has ";
 				}
-				console.log(d);
+
             	d3.select("#texts")
             		.html("<b>" + dateFormat(d.date) + "</b><br>"
 						+ "Length of " + day + ": " + getDurationString(d.duration) + "<br>"
@@ -310,10 +310,9 @@
 						return y(d.delta + d.duration) - y(d.delta);
 					})
 					.attr("y", function(d){
-						if (isNaN(d.sunrise.getTime()) && d.altitude < 0)
-							return d3.select(this).attr("y") + d3.select(this).attr("height");
-						// if (isNaN(d.sunrise.getTime()) && d.altitude > 0)
-						// 	return 0;
+						if (isNaN(d.sunrise.getTime()) && d.altitude < 0){
+							return parseInt(d3.select(this).attr("y")) + parseInt(d3.select(this).attr("height"))/2;
+						}
 						return y(d.delta);
 					})
 					.attr("x", function(d, i) {
