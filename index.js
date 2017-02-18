@@ -82,29 +82,41 @@ function initGraph(){
     return chart;
 }
 
-function getList(p){
+/**
+ * Set date to start of Year
+ * @param {[type]} date [description]
+ */
+function setToStartOfYear(date){
+  date.setMonth(0);
+  date.setDate(1);
+  date.setHours(12, 0, 0, 0);
+  return date;
+}
 
-  var d = new Date();
-  d.setMonth(0);
-  d.setDate(0);
-  d.setHours(12, 0, 0, 0);
+function getList(currentLocation){
 
-  var year = d.getFullYear()+1;
+  var currentDate = setToStartOfYear(new Date());
+
+  var year = currentDate.getFullYear();
   var data = [];
   var o;
   var today = null;
-  var old_a = SunCalc.getTimes(d, p.lat, p.lng);
   var delta = 0;
+
+  // calculate the last day's duration
+  var lastDay = new Date(currentDate);
+  lastDay.setDate(lastDay.getDate() - 1);
+  var old_a = SunCalc.getTimes(lastDay, currentLocation.lat, currentLocation.lng);
   var prevDuration = old_a.sunset.getTime() - old_a.sunrise.getTime();
 
-  d.setDate(d.getDate()+1);
 
-  while (d.getFullYear() == year){
 
-    a = SunCalc.getTimes(d, p.lat, p.lng);
+  while (currentDate.getFullYear() == year){
+
+    a = SunCalc.getTimes(currentDate, currentLocation.lat, currentLocation.lng);
     sr = a.sunrise;
     ss = a.sunset;
-    altitude = SunCalc.getPosition(a.solarNoon, p.lat, p.lng).altitude;
+    altitude = SunCalc.getPosition(a.solarNoon, currentLocation.lat, currentLocation.lng).altitude;
     duration = ss.getTime() - sr.getTime();
 
     if (!isNaN(sr.getTime()) && !isNaN(old_a.sunrise)){
@@ -132,16 +144,16 @@ function getList(p){
 
     o = {sunrise: sr,
       sunset: ss,
-      date: new Date(d),
+      date: new Date(currentDate),
       duration: duration,
       prevDuration: prevDuration,
       delta: delta,
       altitude: altitude
     };
     prevDuration = duration;
-    d.setDate(d.getDate()+1);
+    currentDate.setDate(currentDate.getDate()+1);
   }
-  a = SunCalc.getTimes(d, p.lat, p.lng);
+  a = SunCalc.getTimes(currentDate, currentLocation.lat, currentLocation.lng);
   o.nextDuration = a.sunset.getTime() - a.sunrise.getTime();
   data.push(o);
   return {
