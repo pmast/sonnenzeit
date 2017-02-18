@@ -4,6 +4,11 @@ var timeFormat = d3.time.format("%H:%M:%S");
 var dateFormat = d3.time.format("%Y-%m-%d");
 var now = new Date();
 
+/**
+ * Checki fgiven date is today.
+ * @param  {[type]}  d [description]
+ * @return {Boolean}   [description]
+ */
 function isToday(d){
   today = new Date();
   if(today.getFullYear() == d.getFullYear() && today.getDate() == d.getDate() && today.getMonth() == d.getMonth())
@@ -12,32 +17,29 @@ function isToday(d){
 }
 
 function init(){
-
-  var p = {lng:8.336389, lat:54.651667};
-  var d = new Date();
-
+  var currentLocation = {lng:8.336389, lat:54.651667};
 
   // amrum
-  var p = {lng:8.336389, lat:54.651667};
+  var currentLocation = {lng:8.336389, lat:54.651667};
 
   // rio
-  // p = {lat: -22.908333,lng: -43.196389};
+  // currentLocation = {lat: -22.908333,lng: -43.196389};
 
   // pitcairn
-  // p = {lat: -24.362180,lng: -128.377562};
+  // currentLocation = {lat: -24.362180,lng: -128.377562};
 
   // nuuk
-  // p = {lat: 64.204170,lng: -51.278792};
+  // currentLocation = {lat: 64.204170,lng: -51.278792};
 
   // alaska
-  // p = {lat: 68.550344,lng: -66.576181};
+  // currentLocation = {lat: 68.550344,lng: -66.576181};
 
-  // var p = {lat: -22.908333, lng: -43.196389};
+  // var currentLocation = {lat: -22.908333, lng: -43.196389};
 
   var chart = initGraph();
-  updateGraph(p, chart);
+  updateGraph(currentLocation, chart);
 
-  var map = initMap(p);
+  var map = initMap(currentLocation);
   map.on("moveend",function(e){
     var c = map.getCenter().wrap();
     updateGraph(c, chart);
@@ -45,10 +47,15 @@ function init(){
   return;
 }
 
-function initMap(p){
+/**
+ * Init the map.
+ * @param  {[type]} center [description]
+ * @return {[type]}        [description]
+ */
+function initMap(center){
   var map = L.map('map', {
     // maxBounds: L.latLngBounds([-90, -180], [90, 180])
-  }).setView([p.lat, p.lng], 2);
+  }).setView([center.lat, center.lng], 2);
   L.tileLayer('http://maps.vesseltracker.com/vesseltracker/{z}/{x}/{y}.png', {
     attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://cloudmade.com">CloudMade</a>',
     maxZoom: 18,
@@ -57,6 +64,10 @@ function initMap(p){
   return map;
 }
 
+/**
+ * Init the graph.
+ * @return {[type]} [description]
+ */
 function initGraph(){
   d3.select("body").append("div")
       .attr("class", "tooltip")
@@ -68,7 +79,6 @@ function initGraph(){
       .attr("width", '100%')
       .attr("height", '100%');
 
-    // chart =
     return chart;
 }
 
