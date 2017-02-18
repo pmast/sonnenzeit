@@ -1,0 +1,22 @@
+{
+  "name": "sonnenzeit",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pmast/sonnenzeit.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pmast/sonnenzeit/issues"
+  },
+  "homepage": "https://github.com/pmast/sonnenzeit#readme",
+  "scripts": {
+    "server": "lite-server"
+  }
+}
