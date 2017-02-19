@@ -1,8 +1,5 @@
-// var chart;
-var tzOffset;
 var timeFormat = d3.time.format("%H:%M:%S");
 var dateFormat = d3.time.format("%Y-%m-%d");
-var now = new Date();
 
 /**
  * Checki fgiven date is today.
@@ -15,6 +12,8 @@ function isToday(d){
     return true;
   return false;
 }
+
+
 
 function init(){
   var currentLocation = {lng:8.336389, lat:54.651667};
@@ -36,8 +35,13 @@ function init(){
 
   // var currentLocation = {lat: -22.908333, lng: -43.196389};
 
+  var times = getList(currentLocation);
+
+  times = calculateDeltas(times);
+  console.log(times);
+
   var chart = initGraph();
-  updateGraph(currentLocation, chart);
+  drawGraph(times, chart);
 
   var map = initMap(currentLocation);
   map.on("moveend",function(e){
@@ -93,6 +97,51 @@ function setToStartOfYear(date){
   return date;
 }
 
+/**
+ * Calcualte all times for a given date and location
+ * @param  {[type]} date     [description]
+ * @param  {[type]} location [description]
+ * @return {[type]}          [description]
+ */
+function getLocationObject(date, location) {
+  // calculate the last day's duration
+  var sunTimes = SunCalc.getTimes(date, location.lat, location.lng);
+  var duration = sunTimes.sunset.getTime() - sunTimes.sunrise.getTime();
+  var altitude = SunCalc.getPosition(sunTimes.solarNoon, location.lat, location.lng).altitude;
+
+  // TODO: handle when sun never rieses and sets
+  return {
+    sunrise: sunTimes.sunrise,
+    sunset: sunTimes.sunset,
+    date: new Date(date),
+    duration: duration,
+    altitude: altitude
+  }
+}
+
+/**
+ * Calculate the offset of the sunrise relative to the the previous sunrise
+ * @param  {[type]} times [description]
+ * @return {[type]}       [description]
+ */
+function calculateDeltas(times){
+  var previous = times.previous;
+  var delta = 0;
+  for (var i = 0; i < times.data.length; i++) {
+    var current = times.data[i];
+    delta += (current.sunrise - previous.sunrise);
+    delta -= 24 * 3600 * 1000; // subtract 24h
+    times.data[i].delta = delta;
+    previous = current;
+  }
+  return times;
+}
+
+/**
+ * Calculate the complete list of of sunsetsunrise objects for a given location
+ * @param  {[type]} currentLocation [description]
+ * @return {[type]}                 [description]
+ */
 function getList(currentLocation){
 
   var currentDate = setToStartOfYear(new Date());
@@ -104,169 +153,91 @@ function getList(currentLocation){
   var delta = 0;
 
   // calculate the last day's duration
-  var lastDay = new Date(currentDate);
-  lastDay.setDate(lastDay.getDate() - 1);
-  var old_a = SunCalc.getTimes(lastDay, currentLocation.lat, currentLocation.lng);
-  var prevDuration = old_a.sunset.getTime() - old_a.sunrise.getTime();
-
-
+  var prevDate = new Date(currentDate);
+  prevDate.setDate(prevDate.getDate() - 1);
+  var previousTimes = getLocationObject(prevDate, currentLocation);
+  console.log(getLocationObject(prevDate, currentLocation));
 
   while (currentDate.getFullYear() == year){
-
-    a = SunCalc.getTimes(currentDate, currentLocation.lat, currentLocation.lng);
-    sr = a.sunrise;
-    ss = a.sunset;
-    altitude = SunCalc.getPosition(a.solarNoon, currentLocation.lat, currentLocation.lng).altitude;
-    duration = ss.getTime() - sr.getTime();
-
-    if (!isNaN(sr.getTime()) && !isNaN(old_a.sunrise)){
-      delta = delta + ((sr.getTime() - old_a.sunrise.getTime())-24*3600*1000);
-    } else {
-      // console.log(NaN);
-    }
-
-    if (isNaN(sr.getTime()) && altitude > 0){
-      duration = 24*3600*1000;
-    }
-
-    if (isNaN(sr.getTime()) && altitude < 0){
-      duration = 0;
-    }
-
-    old_a = a;
-
-    if (o != null){
-      o.nextDuration = duration;
-      data.push(o);
-      if (isToday(o.date))
-        today = data.length - 1;
-    }
-
-    o = {sunrise: sr,
-      sunset: ss,
-      date: new Date(currentDate),
-      duration: duration,
-      prevDuration: prevDuration,
-      delta: delta,
-      altitude: altitude
-    };
-    prevDuration = duration;
+    var currentTimes = getLocationObject(currentDate, currentLocation);
+    data.push(currentTimes);
     currentDate.setDate(currentDate.getDate()+1);
+    //
+    // var sunTimes = SunCalc.getTimes(currentDate, currentLocation.lat, currentLocation.lng);
+    // var sunrise = sunTimes.sunrise;
+    // var sunset = sunTimes.sunset;
+    // var altitude = SunCalc.getPosition(sunTimes.solarNoon, currentLocation.lat, currentLocation.lng).altitude;
+    // var duration = sunset.getTime() - sunrise.getTime();
+    //
+    // if (!isNaN(sunrise.getTime()) && !isNaN(prevSunTimes.sunrise)){
+    //   delta = delta + ((sunrise.getTime() - prevSunTimes.sunrise.getTime())-24*3600*1000);
+    // } else {
+    //   // console.log(NaN);
+    // }
+    //
+    // if (isNaN(sunrise.getTime()) && altitude > 0){
+    //   duration = 24*3600*1000;
+    // }
+    //
+    // if (isNaN(sunrise.getTime()) && altitude < 0){
+    //   duration = 0;
+    // }
+    //
+    // prevSunTimes = sunTimes;
+    //
+    // if (o != null){
+    //   o.nextDuration = duration;
+    //   data.push(o);
+    //   if (isToday(o.date))
+    //     today = data.length - 1;
+    // }
+    //
+    // o = {sunrise: sunrise,
+    //   sunset: sunset,
+    //   date: new Date(currentDate),
+    //   duration: duration,
+    //   prevDuration: prevDuration,
+    //   delta: delta,
+    //   altitude: altitude
+    // };
+    //
+    // prevDuration = duration;
+    // currentDate.setDate(currentDate.getDate()+1);
   }
-  a = SunCalc.getTimes(currentDate, currentLocation.lat, currentLocation.lng);
-  o.nextDuration = a.sunset.getTime() - a.sunrise.getTime();
-  data.push(o);
+  var nextTimes = getLocationObject(currentDate, currentLocation);
+
+  // a = SunCalc.getTimes(currentDate, currentLocation.lat, currentLocation.lng);
+  // o.nextDuration = a.sunset.getTime() - a.sunrise.getTime();
+  // data.push(o);
   return {
-    today: today,
+    previous: previousTimes,
+    next: nextTimes,
     data: data
   };
 }
 
 function getColor(d, i, highlight){
   highlight = highlight == null ? false : highlight;
-  if (dateFormat(d.date) == dateFormat(now))
+  if (isToday(d.date))
     return "red";
   if (highlight)
     return "orange";
   return "gold"
 }
 
-function getDurationString(ms){
-
-  var tmp = ms/1000/60/60;
-
-  var h = Math.floor(Math.abs(tmp));
-  var min = Math.floor((Math.abs(tmp) - h)*60);
-  var sec = Math.floor((Math.abs(tmp) - h - min/60)*3600);
-
-  return ((tmp < 0) ? "-" : "") + d3.format("02d")(h) + ":" + d3.format("02d")(min) + ":" + d3.format("02d")(sec);
-}
-
-function getDurationString2(ms){
-  if (ms==0)
-    return "the same length";
-  var tmp = ms/1000/60/60;
-
-  var h = Math.floor(Math.abs(tmp));
-  var hText = "";
-  if (h === 1)
-    hText = d3.format("d")(h) + " hour";
-  if (h > 1)
-    hText = d3.format("d")(h) + " hours";
-
-  var min = Math.floor((Math.abs(tmp) - h)*60);
-  var minText = "";
-  if (min === 1)
-    minText = " " + d3.format("d")(min) + " minute";
-  if (min > 1)
-    minText = " " + d3.format("d")(min) + " minutes";
-
-  var sec = Math.floor((Math.abs(tmp) - h - min/60)*3600);
-  var secText = "";
-  if (sec === 1)
-    secText = " " + d3.format("d")(sec) + " second";
-  if (sec > 1)
-    secText = " " + d3.format("d")(sec) + " seconds";
-
-  return hText +
-    minText +
-    secText;
-}
-
-function updateText(d, previous, next){
-  var previousLabel = "The previous day";
-  var nextLabel = "The next day";
-  var day = "this day";
-  var verb1 = " was ";
-  var verb2 = " is ";
-
-  if (isToday(d.date)){
-    day = "today";
-    nextLabel = "Tomorrow";
-    previousLabel = "Yesterday";
-  }
-
-  if (previous) {
-    var dayLabel = "this day";
-    var erliearRise = d.sunrise - previous.sunrise - 24 * 60 * 60 * 1000;
-    sunriseText = "The sun rose " + getDurationString2(Math.abs(erliearRise)) + " " + ((erliearRise > 0) ? "earlier":"later") + " than " + day;
-    var erliearSet = d.sunset - previous.sunset - 24 * 60 * 60 * 1000;
-    sunsetText = "The sun set " + getDurationString2(Math.abs(erliearSet)) + " " + ((erliearSet > 0) ? "earlier":"later") + " than " + day;
-  }
-
-  if (d.duration - d.prevDuration == 0){
-    verb1 = " had ";
-  }
-  if (d.duration - d.nextDuration == 0){
-    verb2 = " has ";
-  }
-
-        d3.select("#texts")
-          .html("<b>" + dateFormat(d.date) + "</b><br>"
-      + "Length of " + day + ": " + getDurationString(d.duration) + "<br>"
-      + previousLabel + verb1 + getDurationString2(d.duration - d.prevDuration)  + ((d.duration - d.prevDurationp > 0) ? " shorter" : " longer") + " than " + day + ".<br>"
-      + sunriseText + "<br>"
-      + sunsetText + "<br>"
-      + nextLabel + verb2 + getDurationString2(d.duration - d.nextDuration) + ((d.duration - d.nextDuration > 0) ? " shorter" : " longer") + " than " + day + ".<br>"
-      );
-
-}
-
 var highlight;
 
-function updateGraph(p, chart){
-  var data = getList(p);
-  var today = data.today;
-  data = data.data;
+function drawGraph(list, chart){
+  data = list.data;
 
-  if (highlight) {
-    i = highlight.i;
-  } else {
-    i = today;
-  }
-  var previous = i > 0 ? data[i-1] : null;
-  var next = i < data.length ? data[i+1] : null;
-  updateText(data[i], previous, next);
+  // if (highlight) {
+  //   i = highlight.i;
+  // } else {
+  //   i = today;
+  // }
+  // var previous = i > 0 ? data[i-1] : null;
+  // var next = i < data.length ? data[i+1] : null;
+  // updateText(data[i], previous, next);
 
 
   var max = d3.max(data, function(d) {
