@@ -148,9 +148,6 @@ function getList(currentLocation){
 
   var year = currentDate.getFullYear();
   var data = [];
-  var o;
-  var today = null;
-  var delta = 0;
 
   // calculate the last day's duration
   var prevDate = new Date(currentDate);
@@ -162,53 +159,9 @@ function getList(currentLocation){
     var currentTimes = getLocationObject(currentDate, currentLocation);
     data.push(currentTimes);
     currentDate.setDate(currentDate.getDate()+1);
-    //
-    // var sunTimes = SunCalc.getTimes(currentDate, currentLocation.lat, currentLocation.lng);
-    // var sunrise = sunTimes.sunrise;
-    // var sunset = sunTimes.sunset;
-    // var altitude = SunCalc.getPosition(sunTimes.solarNoon, currentLocation.lat, currentLocation.lng).altitude;
-    // var duration = sunset.getTime() - sunrise.getTime();
-    //
-    // if (!isNaN(sunrise.getTime()) && !isNaN(prevSunTimes.sunrise)){
-    //   delta = delta + ((sunrise.getTime() - prevSunTimes.sunrise.getTime())-24*3600*1000);
-    // } else {
-    //   // console.log(NaN);
-    // }
-    //
-    // if (isNaN(sunrise.getTime()) && altitude > 0){
-    //   duration = 24*3600*1000;
-    // }
-    //
-    // if (isNaN(sunrise.getTime()) && altitude < 0){
-    //   duration = 0;
-    // }
-    //
-    // prevSunTimes = sunTimes;
-    //
-    // if (o != null){
-    //   o.nextDuration = duration;
-    //   data.push(o);
-    //   if (isToday(o.date))
-    //     today = data.length - 1;
-    // }
-    //
-    // o = {sunrise: sunrise,
-    //   sunset: sunset,
-    //   date: new Date(currentDate),
-    //   duration: duration,
-    //   prevDuration: prevDuration,
-    //   delta: delta,
-    //   altitude: altitude
-    // };
-    //
-    // prevDuration = duration;
-    // currentDate.setDate(currentDate.getDate()+1);
   }
   var nextTimes = getLocationObject(currentDate, currentLocation);
 
-  // a = SunCalc.getTimes(currentDate, currentLocation.lat, currentLocation.lng);
-  // o.nextDuration = a.sunset.getTime() - a.sunrise.getTime();
-  // data.push(o);
   return {
     previous: previousTimes,
     next: nextTimes,
@@ -217,15 +170,17 @@ function getList(currentLocation){
 }
 
 function getColor(d, i, highlight){
-  highlight = highlight == null ? false : highlight;
   if (isToday(d.date))
     return "red";
   if (highlight)
     return "orange";
+  if (i === selected)
+    return "green"
   return "gold"
 }
 
 var highlight;
+var selected;
 
 function drawGraph(list, chart){
   data = list.data;
@@ -240,10 +195,10 @@ function drawGraph(list, chart){
   // updateText(data[i], previous, next);
 
 
-  var max = d3.max(data, function(d) {
+  var maxDayLength = d3.max(data, function(d) {
     return d.delta + d.duration;
   });
-  var min = d3.min(data, function(d) {
+  var earliestStart = d3.min(data, function(d) {
     return d.delta;
   });
 
@@ -253,10 +208,14 @@ function drawGraph(list, chart){
 
   bar_width = width/data.length;
 
-  t = 24*1000*3600 - (max - min);
+  t = 24 * 1000 * 3600 - (maxDayLength - earliestStart);
 
-  y = d3.scale.linear().domain([min-t/2, max+t/2]).range([0, height]);
-  x = d3.scale.linear().domain([0, data.length]).range([0, width]);
+  y = d3.scale.linear()
+    .domain([earliestStart - t / 2, maxDayLength + t / 2])
+    .range([0, height]);
+  x = d3.scale.linear()
+    .domain([0, data.length])
+    .range([0, width]);
 
   var bar = chart.selectAll("rect")
     .data(data);
@@ -308,6 +267,7 @@ function drawGraph(list, chart){
       return x(i) - .5;
     })
     .duration(1000);
+
   bar.on("mouseover", function(d,i){
     d3.select(this).attr("fill", '#2b2b2b');
 
