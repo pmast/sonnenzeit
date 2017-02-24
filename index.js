@@ -291,4 +291,15 @@ function drawGraph(list, chart){
     d3.select(this).attr("fill", getColor(d, i, true));
   });
 
+  bar.on("contextmenu", function(d, i){
+    d3.event.preventDefault();
+    if (i === selected) {
+      selected = false;
+      d3.select(this).attr("fill", getColor(d, i));
+    } else {
+      selected = i;
+      d3.select(this).attr("fill", getColor(d, i));
+    }
+  });
+
 }
