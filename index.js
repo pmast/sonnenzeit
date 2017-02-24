@@ -169,18 +169,25 @@ function getList(currentLocation){
   };
 }
 
-function getColor(d, i, highlight){
-  if (isToday(d.date))
-    return "red";
-  if (highlight)
-    return "orange";
-  if (i === selected)
+function getColor(d, i){
+  if (i === selected.i) {
+    console.log("tada", i, selected.i);
     return "green"
+  }
+  if (i === highlight.i) {
+    console.log("tada2", i, highlight.i);
+    return "orange"
+  }
+
+  // if (i === highlight.i)
+  //   return "orange";
+  // if (isToday(d.date))
+  //   return "red";
   return "gold"
 }
 
-var highlight;
-var selected;
+var highlight = {};
+var selected = {};
 
 function drawGraph(list, chart){
   data = list.data;
@@ -269,36 +276,64 @@ function drawGraph(list, chart){
     .duration(1000);
 
   bar.on("mouseover", function(d,i){
-    d3.select(this).attr("fill", '#2b2b2b');
+    console.log(i);
 
-      if (highlight != null){
-        d3.select(highlight.element).attr("fill", getColor(highlight.d, highlight.i));
-      }
+      var color = "gold";
+      if (highlight.i === selected.i)
+        color = "green";
+      d3.select(highlight.element).attr("fill", color);
 
       highlight = {
         element: this,
         d:d,
         i:i
       };
-      old_index = i;
+      d3.select(highlight.element).attr("fill", "red");
 
-      var previous = i > 0 ? data[i-1] : null;
-      var next = i < data.length ? data[i+1] : null;
 
-      updateText(d, previous, next);
+      // old_index = i;
+      // var previous = i > 0 ? data[i-1] : null;
+      // var next = i < data.length ? data[i+1] : null;
+      // updateText(d, previous, next);
   });
   bar.on("mouseout", function(d,i){
-    d3.select(this).attr("fill", getColor(d, i, true));
+    if (i === highlight.i)
+      d3.select(this).attr("fill", "orange");
   });
 
   bar.on("contextmenu", function(d, i){
     d3.event.preventDefault();
-    if (i === selected) {
-      selected = false;
-      d3.select(this).attr("fill", getColor(d, i));
+
+
+    if (i === selected.i) {
+      selected = {};
+      var color = "gold";
+      if (i === highlight.i)
+        color = "orange";
+      d3.select(this).attr("fill", color);
     } else {
-      selected = i;
-      d3.select(this).attr("fill", getColor(d, i));
+      var color = "gold";
+      if (highlight.i === selected.i)
+        color = "orange";
+      d3.select(selected.element).attr("fill", color);
+
+      selected = {
+        element: this,
+        i: i,
+        d: d
+      };
+      d3.select(this).attr("fill", "green");
+
+    }
+  });
+
+  d3.select("body").on("keydown", function() {
+    if (d3.event.key === "Escape") {
+      var color = "gold";
+      if (selected.i === highlight.i)
+        color = "orange";
+      d3.select(selected.element).attr("fill", color);
+      selected = {};
     }
   });
 
