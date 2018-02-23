@@ -1,25 +1,20 @@
 var timeFormat = d3.time.format("%H:%M:%S");
 var dateFormat = d3.time.format("%Y-%m-%d");
 
-/**
- * Checki fgiven date is today.
- * @param  {[type]}  d [description]
- * @return {Boolean}   [description]
- */
-function isToday(d){
-  today = new Date();
-  if(today.getFullYear() == d.getFullYear() && today.getDate() == d.getDate() && today.getMonth() == d.getMonth())
-    return true;
-  return false;
-}
+
 
 
 
 function init(){
+
+
   var currentLocation = {lng:8.336389, lat:54.651667};
+  
+  // hamburg
+  var currentLocation = {lng: 9.995285, lat: 53.554765};
 
   // amrum
-  var currentLocation = {lng:8.336389, lat:54.651667};
+  // var currentLocation = {lng: 8.336389, lat: 54.651667};
 
   // rio
   // currentLocation = {lat: -22.908333,lng: -43.196389};
@@ -35,10 +30,14 @@ function init(){
 
   // var currentLocation = {lat: -22.908333, lng: -43.196389};
 
-  var times = getList(currentLocation);
+// console.log(SunCalc.getTimes(new Date('2018-01-01 12:00'), currentLocation.lat, currentLocation.lng)); 
+// console.log(SunCalc.getPosition(new Date('2018-01-01 12:00'), currentLocation.lat, currentLocation.lng)); 
 
-  times = calculateDeltas(times);
-  console.log(times);
+// console.log(SunCalc.getTimes(new Date('2018-08-01 12:00'), currentLocation.lat, currentLocation.lng)); 
+// console.log(SunCalc.getPosition(new Date('2018-08-01 12:00'), currentLocation.lat, currentLocation.lng)); 
+
+  // get list of the sun-time for the complete year
+  var times = getList(currentLocation);
 
   var chart = initGraph();
   drawGraph(times, chart);
@@ -51,6 +50,11 @@ function init(){
   return;
 }
 
+function updateGraph(center, chart) {
+  var times = getList(center);
+  drawGraph(times, chart);
+}
+
 /**
  * Init the map.
  * @param  {[type]} center [description]
@@ -59,7 +63,7 @@ function init(){
 function initMap(center){
   var map = L.map('map', {
     // maxBounds: L.latLngBounds([-90, -180], [90, 180])
-  }).setView([center.lat, center.lng], 2);
+  }).setView([center.lat, center.lng], 5);
   L.tileLayer('http://maps.vesseltracker.com/vesseltracker/{z}/{x}/{y}.png', {
     attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://cloudmade.com">CloudMade</a>',
     maxZoom: 18,
@@ -69,28 +73,10 @@ function initMap(center){
 }
 
 /**
- * Init the graph.
- * @return {[type]} [description]
- */
-function initGraph(){
-  d3.select("body").append("div")
-      .attr("class", "tooltip")
-      .attr("id", "tooltip")
-      .style("opacity", 0);
-
-  var chart = d3.select("#chartcontainer").append("svg")
-      .attr("class", "graph")
-      .attr("width", '100%')
-      .attr("height", '100%');
-
-    return chart;
-}
-
-/**
- * Set date to start of Year
+ * Return the date at the start of the yearSet date to start of Year
  * @param {[type]} date [description]
  */
-function setToStartOfYear(date){
+function getFirstDayOfYear(date){
   date.setMonth(0);
   date.setDate(1);
   date.setHours(12, 0, 0, 0);
@@ -142,199 +128,28 @@ function calculateDeltas(times){
  * @param  {[type]} currentLocation [description]
  * @return {[type]}                 [description]
  */
-function getList(currentLocation){
-
-  var currentDate = setToStartOfYear(new Date());
-
-  var year = currentDate.getFullYear();
+function getList(location){
   var data = [];
+  var now = new Date();
+  var firstDayOfYear = getFirstDayOfYear(now);
+  var year = now.getFullYear();
 
-  // calculate the last day's duration
-  var prevDate = new Date(currentDate);
-  prevDate.setDate(prevDate.getDate() - 1);
-  var previousTimes = getLocationObject(prevDate, currentLocation);
-  console.log(getLocationObject(prevDate, currentLocation));
+  // calculate the previous day's data
+  var prevDate = new Date(firstDayOfYear);
+  prevDate.setDate(prevDate.getDate() - 1);  
+  var previousTimes = getLocationObject(prevDate, location);
 
+  var currentDate = new Date(firstDayOfYear);
   while (currentDate.getFullYear() == year){
-    var currentTimes = getLocationObject(currentDate, currentLocation);
+    var currentTimes = getLocationObject(currentDate, location);
     data.push(currentTimes);
     currentDate.setDate(currentDate.getDate()+1);
   }
-  var nextTimes = getLocationObject(currentDate, currentLocation);
+  var nextTimes = getLocationObject(currentDate, location);
 
   return {
     previous: previousTimes,
     next: nextTimes,
     data: data
   };
-}
-
-function getColor(d, i){
-  if (i === selected.i) {
-    console.log("tada", i, selected.i);
-    return "green"
-  }
-  if (i === highlight.i) {
-    console.log("tada2", i, highlight.i);
-    return "orange"
-  }
-
-  // if (i === highlight.i)
-  //   return "orange";
-  // if (isToday(d.date))
-  //   return "red";
-  return "gold"
-}
-
-var highlight = {};
-var selected = {};
-
-function drawGraph(list, chart){
-  data = list.data;
-
-  // if (highlight) {
-  //   i = highlight.i;
-  // } else {
-  //   i = today;
-  // }
-  // var previous = i > 0 ? data[i-1] : null;
-  // var next = i < data.length ? data[i+1] : null;
-  // updateText(data[i], previous, next);
-
-
-  var maxDayLength = d3.max(data, function(d) {
-    return d.delta + d.duration;
-  });
-  var earliestStart = d3.min(data, function(d) {
-    return d.delta;
-  });
-
-  width = chart.node().parentNode.scrollWidth;
-  height = chart.node().parentNode.scrollHeight - 20;
-
-
-  bar_width = width/data.length;
-
-  t = 24 * 1000 * 3600 - (maxDayLength - earliestStart);
-
-  y = d3.scale.linear()
-    .domain([earliestStart - t / 2, maxDayLength + t / 2])
-    .range([0, height]);
-  x = d3.scale.linear()
-    .domain([0, data.length])
-    .range([0, width]);
-
-  var bar = chart.selectAll("rect")
-    .data(data);
-
-  var old_index;
-
-  bar.enter().append("rect")
-    .attr("y", function(d){
-      // if (isNaN(d.sunrise.getTime()) && d.altitude > 0)
-      // 	return 0;
-      // if (isNaN(d.sunrise.getTime()) && d.altitude < 0)
-      // 	return height/2;
-      return y(d.delta);
-    })
-    .attr("x", function(d, i) {
-      return x(i) - .5;
-    })
-    .attr("width", bar_width + .5)
-    .attr("height", function(d, i){
-      if (isNaN(d.sunset.getTime()) && d.altitude < 0){
-        return 0;
-      }
-      if (isNaN(d.sunset.getTime()) && d.altitude > 0)
-        return height;
-      return y(d.delta + d.duration) - y(d.delta);
-    })
-    .attr("fill", function(d, i){
-      return getColor(d, i);
-    });
-
-  bar.transition()
-    .attr("height", function(d){
-
-      if (isNaN(d.sunset.getTime()) && d.altitude < 0){
-        return 0;
-      }
-      if (isNaN(d.sunset.getTime()) && d.altitude > 0){
-        return height;
-      }
-      return y(d.delta + d.duration) - y(d.delta);
-    })
-    .attr("y", function(d){
-      if (isNaN(d.sunrise.getTime()) && d.altitude < 0){
-        return parseInt(d3.select(this).attr("y")) + parseInt(d3.select(this).attr("height"))/2;
-      }
-      return y(d.delta);
-    })
-    .attr("x", function(d, i) {
-      return x(i) - .5;
-    })
-    .duration(1000);
-
-  bar.on("mouseover", function(d,i){
-    console.log(i);
-
-      var color = "gold";
-      if (highlight.i === selected.i)
-        color = "green";
-      d3.select(highlight.element).attr("fill", color);
-
-      highlight = {
-        element: this,
-        d:d,
-        i:i
-      };
-      d3.select(highlight.element).attr("fill", "red");
-
-
-      // old_index = i;
-      // var previous = i > 0 ? data[i-1] : null;
-      // var next = i < data.length ? data[i+1] : null;
-      // updateText(d, previous, next);
-  });
-  bar.on("mouseout", function(d,i){
-    if (i === highlight.i)
-      d3.select(this).attr("fill", "orange");
-  });
-
-  bar.on("contextmenu", function(d, i){
-    d3.event.preventDefault();
-
-
-    if (i === selected.i) {
-      selected = {};
-      var color = "gold";
-      if (i === highlight.i)
-        color = "orange";
-      d3.select(this).attr("fill", color);
-    } else {
-      var color = "gold";
-      if (highlight.i === selected.i)
-        color = "orange";
-      d3.select(selected.element).attr("fill", color);
-
-      selected = {
-        element: this,
-        i: i,
-        d: d
-      };
-      d3.select(this).attr("fill", "green");
-
-    }
-  });
-
-  d3.select("body").on("keydown", function() {
-    if (d3.event.key === "Escape") {
-      var color = "gold";
-      if (selected.i === highlight.i)
-        color = "orange";
-      d3.select(selected.element).attr("fill", color);
-      selected = {};
-    }
-  });
-
 }

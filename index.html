@@ -34,10 +34,12 @@
 		<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
 		<script src="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.js"></script>
 
+		<script src="helpers.js"></script>
+		<script src="chart.js"></script>
 		<script src="stringOperations.js"></script>
 		<script src="index.js"></script>
 	</head>
-	<body onLOad="javascript:init();" style="font-size: 20pt; font-family: Arial, 'sans-serif'; background: #2b2b2b;">
+	<body style="font-size: 20pt; font-family: Arial, 'sans-serif'; background: #2b2b2b;">
 		<div class="container">
 			<div class="row" style ="background:transparent;">
 				<div class="col-md-12 nopad" style="margin-bottom:20px; color:lightgray;">
@@ -49,7 +51,7 @@
 					<div class="label" style="position:absolute; left:0px; bottom:0px;">|&larr;January</div>
 					<div class="label" style="position:absolute; right:0px; bottom:0px;">December&rarr;|</div>
 				</div>
-				<div id="texts" class="col-md-12 nopad" style="background: transparent; height:100; font-size:14px; color: lightgray;">
+				<div id="texts" class="col-md-12 nopad" style="background: transparent; height:120; font-size:14px; color: lightgray;">
 				</div>
 				<div id="mapcontainer" class="col-md-12 nopad"  style="background: transparent;">
 					<div style="position:absolute; width:100%; height:100%; z-index: 1; background:transparent;" id="map">
@@ -62,5 +64,9 @@
 		        </div>
 		    </div>
 		</div>
+
+		<script>
+			javascript:init();
+		</script>
 	</body>
 </html>
