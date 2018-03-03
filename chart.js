@@ -37,14 +37,14 @@ function drawGraph(list, drawArea){
 
 
     var earliestStart = d3.min(data, function(d) {
-      return correctTimes(d).sunrise;
+      return d.sunriseTimeOfDay;
     });
     var latestEnd = d3.max(data, function(d) {
-      return correctTimes(d).sunset;
+      return d.sunsetTimeOfDay;
     });
 
     var y = d3.scale.linear()
-      .domain([earliestStart, latestEnd])
+      .domain([earliestStart, earliestStart + 24])
       .range([0, height]);
 
     var x = d3.scale.linear()
@@ -56,10 +56,10 @@ function drawGraph(list, drawArea){
   
     bar.enter().append("rect")
         .attr("height", function(d) {
-            return y(correctTimes(d).sunset) - y(correctTimes(d).sunrise);
+            return y(d.sunsetTimeOfDay) - y(d.sunriseTimeOfDay);
         })
         .attr("y", function(d){
-            return y(correctTimes(d).sunrise);
+            return y(d.sunriseTimeOfDay);
         })
         .attr("x", function(d, i) {
             return x(i) - .5;
@@ -74,11 +74,31 @@ function drawGraph(list, drawArea){
       );
   
     bar.transition()
-        .attr("height", function(d) {
-            return y(correctTimes(d).sunset) - y(correctTimes(d).sunrise);
+      .attr("height", function(d) {
+          var yValue = 0;
+          if (!d.noSunrise) {
+            yValue = y(d.sunriseTimeOfDay)
+          }
+          if (d.noSunset) {
+            if (d.altitude > 0) {
+              return height - yValue;
+            } else {
+              return 0;
+            }
+            
+          }
+          return y(d.sunsetTimeOfDay) - y(d.sunriseTimeOfDay);
         })
       .attr("y", function(d){
-        return y(correctTimes(d).sunrise);
+        if (d.noSunrise) {
+          if (d.altitude > 0) {
+            return 0;
+          } else {
+            return height / 2;
+          }
+          return 0;
+        }
+        return y(d.sunriseTimeOfDay);
       })
       .attr("x", function(d, i) {
         return x(i) - .5;

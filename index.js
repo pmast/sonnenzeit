@@ -11,7 +11,11 @@ function init(){
   var currentLocation = {lng:8.336389, lat:54.651667};
   
   // hamburg
-  var currentLocation = {lng: 9.995285, lat: 53.554765};
+  var currentLocation = {lng: 9.995285, lat: 65.554765};
+
+  // var now = new Date(2018, 6, 5);
+  // console.log(getLocationObject(now, currentLocation));
+  // return;
 
   // amrum
   // var currentLocation = {lng: 8.336389, lat: 54.651667};
@@ -94,11 +98,25 @@ function getLocationObject(date, location) {
   var sunTimes = SunCalc.getTimes(date, location.lat, location.lng);
   var duration = sunTimes.sunset.getTime() - sunTimes.sunrise.getTime();
   var altitude = SunCalc.getPosition(sunTimes.solarNoon, location.lat, location.lng).altitude;
+  var noon = new Date(date)
+  noon.setUTCHours(12,0,0,0);
 
-  // TODO: handle when sun never rieses and sets
+  var sunriseTimeOfDay = 12 + (sunTimes.sunrise - noon)/1000/3600;
+  var sunsetTimeOfDay = 12 + (sunTimes.sunset - noon)/1000/3600;
+
+  if (sunTimes.sunset.toString() === "Invalid Date") {
+    console.log(noon, sunTimes.sunrise, sunTimes.sunset);
+  }
+  
+
   return {
     sunrise: sunTimes.sunrise,
+    sunriseTimeOfDay: sunriseTimeOfDay,
+    noSunrise: sunTimes.sunrise.toString() === "Invalid Date",
     sunset: sunTimes.sunset,
+    sunsetTimeOfDay: sunsetTimeOfDay,
+    noSunset: sunTimes.sunset.toString() === "Invalid Date",
+    noon: sunTimes.solarNoon,
     date: new Date(date),
     duration: duration,
     altitude: altitude
