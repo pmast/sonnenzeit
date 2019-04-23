@@ -6,12 +6,8 @@ var dateFormat = d3.time.format("%Y-%m-%d");
 
 
 function init(){
-
-
-  var currentLocation = {lng:8.336389, lat:54.651667};
-  
   // hamburg
-  var currentLocation = {lng: 9.995285, lat: 65.554765};
+  var currentLocation = {lng: 9.6476449, lat: 53.5582447};
 
   // var now = new Date(2018, 6, 5);
   // console.log(getLocationObject(now, currentLocation));
