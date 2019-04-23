@@ -68,7 +68,7 @@ function initMap(center){
   var map = L.map('map', {
     // maxBounds: L.latLngBounds([-90, -180], [90, 180])
   }).setView([center.lat, center.lng], 5);
-  L.tileLayer('http://maps.vesseltracker.com/vesseltracker/{z}/{x}/{y}.png', {
+  L.tileLayer('//maps.vesseltracker.com/vesseltracker/{z}/{x}/{y}.png', {
     attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://cloudmade.com">CloudMade</a>',
     maxZoom: 18,
     // noWrap: true
